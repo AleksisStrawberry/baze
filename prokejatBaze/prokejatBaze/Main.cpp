@@ -4,34 +4,47 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "conio.h"
+#include <time.h>
 
 #pragma comment (lib, "Ws2_32.lib")
 #pragma comment (lib, "Mswsock.lib")
 #pragma comment (lib, "AdvApi32.lib")
 
-typedef struct dateTime 
-{
-	char day;
-	char month;
-	short year;
-	char hour;
-	char minute;
-	char second;
-}Dt;
 
-typedef struct city
+
+typedef SYSTEMTIME DateTime;
+
+typedef struct weapon
 {
-	int eNumber;
+	int id;
 	char maker[50];
 	char mark[50];
 	double price;
-	Dt dt;
-}City;
+	DateTime date;
+}Weapon;
+
+Weapon EnterWeapon()
+{	
+	Weapon w;
+	printf("Enter the identification number:\n");
+	scanf("%d", &(w.id));
+	printf("Enter the maker:\n");
+	scanf("%s", w.maker);
+	printf("Enter the mark:\n");
+	scanf("%s", w.mark);
+	printf("Enter the price:\n");
+	scanf("%lf", &w.price);
+
+	GetSystemTime(&w.date);
+
+	return w;
+}
 
 int main()
 {
-
-
+		
+	
+		EnterWeapon();
 	int choice;
 
 	do
