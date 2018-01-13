@@ -39,7 +39,25 @@ Weapon EnterWeapon()
 
 	return w;
 }
+void Create_file() 
+{
+	
+		FILE *f;
+		char name[20];
+		printf("Enter the file name: ");
+		fflush(stdin);
+		gets_s(name);
 
+		f = fopen(name, "wb");
+
+		if (f == NULL) {
+			printf("\nThe file was not successfully opened!");
+		}
+		else
+			printf("\nThe file '%s' was successfully opened", name);
+
+		fclose(f);
+}
 int main()
 {
 		
