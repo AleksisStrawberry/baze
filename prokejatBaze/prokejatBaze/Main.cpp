@@ -10,7 +10,8 @@
 #pragma comment (lib, "Mswsock.lib")
 #pragma comment (lib, "AdvApi32.lib")
 
-
+FILE *activeFile = NULL;
+char activeFileName[20];
 
 typedef SYSTEMTIME DateTime;
 
@@ -23,54 +24,111 @@ typedef struct weapon
 	DateTime date;
 }Weapon;
 
+int get_int()
+{
+	char tempString[15];
+	gets_s(tempString);
+	return atoi(tempString);
+}
 Weapon EnterWeapon()
 {	
 	Weapon w;
 	printf("Enter the identification number:\n");
-	scanf("%d", &(w.id));
+	w.id = get_int();
 	printf("Enter the maker:\n");
-	scanf("%s", w.maker);
+	gets_s(w.maker);
 	printf("Enter the mark:\n");
-	scanf("%s", w.mark);
+	gets_s(w.mark);
 	printf("Enter the price:\n");
-	scanf("%lf", &w.price);
+	w.price = get_int();
 
 	GetSystemTime(&w.date);
 
 	return w;
 }
-void Create_file() 
+//task 1
+void CreateNewFile() 
 {
-	
-		FILE *f;
+		FILE *file;
 		char name[20];
-		printf("Enter the file name: ");
+		printf("Enter the file name:\n");
+
 		fflush(stdin);
 		gets_s(name);
+		file = fopen(name, "wb");
 
-		f = fopen(name, "wb");
-
-		if (f == NULL) {
-			printf("\nThe file was not successfully opened!");
+		if (file == NULL) {
+			printf("The file was not successfully created!\n");
 		}
 		else
-			printf("\nThe file '%s' was successfully opened", name);
+			printf("'%s' successfully created!\n", name);
 
-		fclose(f);
+		fclose(file);
 }
+
+//task 2
+void ChooseActiveFile() 
+{
+	if (activeFile != NULL)
+	{
+		fclose(activeFile);
+	}
+
+	printf("Enter the name of active file:\n");
+	fflush(stdin);
+	gets_s(activeFileName);
+
+	activeFile = fopen(activeFileName, "rb+");
+	if (activeFile == NULL) 
+	{
+		printf("%s File does not exist!", activeFileName);
+	}
+}
+
+//task 3
+void ShowActiveFile() 
+{
+	if (activeFile != NULL)
+	{
+		printf("The name of active file is: %s\n", activeFileName);
+	}
+	else
+		printf("The active file does not exist!\n");
+}
+
+//task 4
+void SerialFileForming()
+{
+	char c[2];
+	Weapon w;
+	while (c[0] != 'n') 
+	{
+		w = EnterWeapon();
+		fwrite(&w, sizeof(Weapon), 1, activeFile);		
+		printf("Do you want to continue?(y/n)\n");
+		gets_s(c);
+	}
+
+	fseek(activeFile, 0, SEEK_SET);	fread(&w, sizeof(Weapon), 1, activeFile);
+	printf("ID is %d\nMaker is %s\nMark is %s\nPrice is %lf\nDate is: %u %u %u %u %u %u\n", w.id, w.maker, w.mark, w.price, w.date.wDay, w.date.wMonth, w.date.wYear, w.date.wHour, w.date.wMinute, w.date.wSecond);
+	fread(&w, sizeof(Weapon), 1, activeFile);
+	printf("ID is %d\nMaker is %s\nMark is %s\nPrice is %lf\nDate is: %u %u %u %u %u %u\n", w.id, w.maker, w.mark, w.price, w.date.wDay, w.date.wMonth, w.date.wYear, w.date.wHour, w.date.wMinute, w.date.wSecond);
+
+}
+
 int main()
 {
-		
 	
-		EnterWeapon();
-	int choice;
+	
+
+	char choice[10];
 
 	do
 	{
 		printf("Meni:\n\n");
-		printf("1. formiranje prazne datoteke pri èemu korisnik zadaje naziv nove datoteke\n");
-		printf("2. izbor aktivne datoteke zadavanjem njenog naziva\n");
-		printf("3. prikaz naziva aktivne datoteke\n");
+		printf("1. Create an empty file\n");
+		printf("2. Choose the active file\n");
+		printf("3. Show the file name\n");
 		printf("4. formiranje serijske datoteke direktnim unosom podataka u realnom vremenu\n");
 		printf("5. formiranje sekvencijalne datoteke tako što æe se uèitati slogovi iz serijske datoteke u\n");
 		printf("6. formiranje aktivne datoteke tako što æe se popunjavati primarna zona datoteke sa\n");
@@ -79,37 +137,39 @@ int main()
 		printf("9. logièko brisanje aktuelnog sloga iz aktivne datoteke \n");
 		printf("10. promenu vrednosti obeležja datum i vreme uvrštenja u ponudu u zadatom slogu iz\n");
 		printf("11. Exit!\n");
-		scanf_s("%d", &choice);
 
-		switch (choice)
+		gets_s(choice);
+
+		switch (atoi(choice))
 		{
-		case 1: /*Call function here to do the required operation*/
-			break;
-		case 2: /*Call function here to do the required operation*/
-			break;
-		case 3: /*Call function here to do the required operation*/
-			break;
-		case 4: /*Call function here to do the required operation*/
-			break;
-		case 5: /*Call function here to do the required operation*/
-			break;
-		case 6: /*Call function here to do the required operation*/
-			break;
-		case 7: /*Call function here to do the required operation*/
-			break;
-		case 8: /*Call function here to do the required operation*/
-			break;
-		case 9: /*Call function here to do the required operation*/
-			break;
-		case 10: /*Call function here to do the required operation*/
-			break;
-		case 11: printf("Goodbye\n\n");
-			break;
-		default: printf("Wrong Choice. Enter again\n");
-			break;
+			case 1: CreateNewFile();
+				break;
+			case 2: ChooseActiveFile();
+				break;
+			case 3: ShowActiveFile();
+				break;
+			case 4: SerialFileForming();
+				break;
+			case 5: /*Call function here to do the required operation*/
+				break;
+			case 6: /*Call function here to do the required operation*/
+				break;
+			case 7: /*Call function here to do the required operation*/
+				break;
+			case 8: /*Call function here to do the required operation*/
+				break;
+			case 9: /*Call function here to do the required operation*/
+				break;
+			case 10: /*Call function here to do the required operation*/
+				break;
+			case 11: 
+					printf("Goodbye\n\n");
+					return 0;					
+			default: printf("Wrong Choice. Enter again\n");
+				break;
 		}
 
-	} while (choice != 11);
+	} while (1);
 
 	//_getch();
 
