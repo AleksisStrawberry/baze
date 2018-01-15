@@ -26,6 +26,7 @@ node* create_node(Weapon w)
 }
 
 
+
 node* insert_node(node *root, Weapon w) 
 {
 
@@ -83,6 +84,17 @@ void display_tree(node* nd)
 	//printf("%d %s %s %d %d %u\n", nd->data.id, nd->firstName, nd->lastName, nd->year, nd->ects, nd->department);
 	printf("ID is %d\nMaker is %s\nMark is %s\nPrice is %lf\nDate is: %u %u %u %u %u %u\n", nd->data.id, nd->data.maker, nd->data.mark, nd->data.price, nd->data.date.wDay, nd->data.date.wMonth, nd->data.date.wYear, nd->data.date.wHour, nd->data.date.wMinute, nd->data.date.wSecond);
 	display_tree(nd->right);
+}
+
+void treeIntoFile(node* nd, FILE* file)
+{
+	if (nd == NULL)
+		return;
+
+	treeIntoFile(nd->left, file);
+
+	fwrite(&nd->data, sizeof(Weapon), 1, file);
+	treeIntoFile(nd->right, file);
 }
 
 

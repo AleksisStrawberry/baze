@@ -28,3 +28,8 @@ typedef struct node
 	struct node* left;
 	struct node* right;
 } node;
+
+node* insert_node(node *root, Weapon w);
+void dispose(node* root);
+void display_tree(node* nd);
+void treeIntoFile(node* nd, FILE* file);

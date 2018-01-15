@@ -6,6 +6,8 @@ char activeFileName[20];
 
 
 
+
+
 int get_int()
 {
 	char tempString[15];
@@ -83,17 +85,59 @@ void SerialFileForming()
 {
 	char c[2];
 	Weapon w;
+	FILE *serialFile = NULL;
+	serialFile = fopen("serialFile.bin", "wb");
+
+	if (serialFile == NULL) {
+		printf("Serial file was not successfully created!\n");
+	}
+	/*else
+		printf("Serial file successfully created!\n");
+	*/
+	
 	while (c[0] != 'n') 
 	{
 		w = EnterWeapon();
-		fwrite(&w, sizeof(Weapon), 1, activeFile);		
+		fwrite(&w, sizeof(Weapon), 1, serialFile);		
 		printf("Do you want to continue?(y/n)\n");
 		gets_s(c);
 	}
 
-	fseek(activeFile, 0, SEEK_SET);	fread(&w, sizeof(Weapon), 1, activeFile);
+	/*fseek(serialFile, 0, SEEK_SET);	fread(&w, sizeof(Weapon), 1, serialFile);
 	printf("ID is %d\nMaker is %s\nMark is %s\nPrice is %lf\nDate is: %u %u %u %u %u %u\n", w.id, w.maker, w.mark, w.price, w.date.wDay, w.date.wMonth, w.date.wYear, w.date.wHour, w.date.wMinute, w.date.wSecond);
-	fread(&w, sizeof(Weapon), 1, activeFile);
+	fread(&w, sizeof(Weapon), 1, serialFile);
+	printf("ID is %d\nMaker is %s\nMark is %s\nPrice is %lf\nDate is: %u %u %u %u %u %u\n", w.id, w.maker, w.mark, w.price, w.date.wDay, w.date.wMonth, w.date.wYear, w.date.wHour, w.date.wMinute, w.date.wSecond);
+	*/
+	fclose(serialFile);
+}
+
+//task 5
+void SequentialFileForming() 
+{
+	FILE *sequentialFile = NULL;
+	FILE *serialFile = NULL;
+	serialFile = fopen("serialFile.bin", "rb");
+	sequentialFile = fopen("sequentialFile.bin", "wb+");
+
+	if (serialFile == NULL || sequentialFile == NULL) 
+	{
+		printf("Error with opening file!");
+	}
+	
+	//citam iz serijske u stablo dokle god fread vraca broj podataka koji je razlicit od nula
+	node *root = NULL;
+	Weapon w;
+	while (fread(&w, sizeof(Weapon), 1, serialFile) != 0)
+	{
+		root = insert_node(root, w);
+	}
+
+	treeIntoFile(root, sequentialFile);
+	//display_tree(root);
+	fseek(sequentialFile, 0, SEEK_SET);
+	fread(&w, sizeof(Weapon), 1, sequentialFile);
+	printf("ID is %d\nMaker is %s\nMark is %s\nPrice is %lf\nDate is: %u %u %u %u %u %u\n", w.id, w.maker, w.mark, w.price, w.date.wDay, w.date.wMonth, w.date.wYear, w.date.wHour, w.date.wMinute, w.date.wSecond);
+	fread(&w, sizeof(Weapon), 1, sequentialFile);
 	printf("ID is %d\nMaker is %s\nMark is %s\nPrice is %lf\nDate is: %u %u %u %u %u %u\n", w.id, w.maker, w.mark, w.price, w.date.wDay, w.date.wMonth, w.date.wYear, w.date.wHour, w.date.wMinute, w.date.wSecond);
 
 }
@@ -130,7 +174,7 @@ int main()
 				break;
 			case 4: SerialFileForming();
 				break;
-			case 5: /*Call function here to do the required operation*/
+			case 5: SequentialFileForming();
 				break;
 			case 6: /*Call function here to do the required operation*/
 				break;
