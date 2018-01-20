@@ -98,12 +98,14 @@ void SerialFileForming()
 	while (c[0] != 'n') 
 	{
 		w = EnterWeapon();
-		fwrite(&w, sizeof(Weapon), 1, serialFile);		
+		fwrite(&w, sizeof(Weapon), 1, serialFile);
+		
 		printf("Do you want to continue?(y/n)\n");
 		gets_s(c);
 	}
 
-	/*fseek(serialFile, 0, SEEK_SET);	fread(&w, sizeof(Weapon), 1, serialFile);
+	/*fseek(serialFile, 0, SEEK_SET);
+	fread(&w, sizeof(Weapon), 1, serialFile);
 	printf("ID is %d\nMaker is %s\nMark is %s\nPrice is %lf\nDate is: %u %u %u %u %u %u\n", w.id, w.maker, w.mark, w.price, w.date.wDay, w.date.wMonth, w.date.wYear, w.date.wHour, w.date.wMinute, w.date.wSecond);
 	fread(&w, sizeof(Weapon), 1, serialFile);
 	printf("ID is %d\nMaker is %s\nMark is %s\nPrice is %lf\nDate is: %u %u %u %u %u %u\n", w.id, w.maker, w.mark, w.price, w.date.wDay, w.date.wMonth, w.date.wYear, w.date.wHour, w.date.wMinute, w.date.wSecond);
@@ -142,9 +144,33 @@ void SequentialFileForming()
 
 }
 
+//task 6
+
+void IndexSequentialFileForming() 
+{
+	fseek(activeFile, sizeof(int),  SEEK_SET);	//ostavljam prazno mesto za zaglavlje
+	FILE *sequentialFile = fopen("sequentialFile.bin", "rb");
+	Weapon w;
+	Weapon weapons[FB];
+	int i=0;
+	while (fread(&w, sizeof(Weapon), 1, sequentialFile)) 
+	{
+		fwrite(&w, sizeof(Weapon), 1, activeFile);
+		i++;
+		if (i % (FB-1) == 0) 
+		{
+			printf("%d\n", i);
+			memset(&w, 0, sizeof(Weapon));
+			fwrite(&w, sizeof(Weapon), 1, activeFile);
+		}
+		
+	}
+
+
+}
 int main()
 {
-
+	
 	char choice[10];
 
 	do
@@ -176,7 +202,7 @@ int main()
 				break;
 			case 5: SequentialFileForming();
 				break;
-			case 6: /*Call function here to do the required operation*/
+			case 6: IndexSequentialFileForming();	//doadati uslov da li je datoteka otvorena
 				break;
 			case 7: /*Call function here to do the required operation*/
 				break;

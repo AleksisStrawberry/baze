@@ -1,5 +1,6 @@
 #pragma once
 #define WIN32_LEAN_AND_MEAN
+#define FB 5
 
 #include <windows.h>
 #include <stdlib.h>
@@ -20,6 +21,7 @@ typedef struct weapon
 	double price;
 	DateTime date;
 }Weapon;
+
 
 typedef struct node
 {
