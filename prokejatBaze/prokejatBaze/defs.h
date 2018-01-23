@@ -7,12 +7,22 @@
 #include <stdio.h>
 #include "conio.h"
 #include <time.h>
+#include <math.h>
 
 #pragma comment (lib, "Ws2_32.lib")
 #pragma comment (lib, "Mswsock.lib")
 #pragma comment (lib, "AdvApi32.lib")
 
 typedef SYSTEMTIME DateTime;
+
+typedef struct indTreeNode {
+	int id1;
+	int id2;
+	int addrId1;
+	int addrId2;
+}IndTreeNode;
+
+
 typedef struct weapon
 {
 	int id;

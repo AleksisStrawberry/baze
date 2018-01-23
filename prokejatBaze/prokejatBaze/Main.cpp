@@ -15,7 +15,7 @@ int get_int()
 	return atoi(tempString);
 }
 Weapon EnterWeapon()
-{	
+{
 	Weapon w;
 	printf("Enter the identification number:\n");
 	w.id = get_int();
@@ -31,27 +31,27 @@ Weapon EnterWeapon()
 	return w;
 }
 //task 1
-void CreateNewFile() 
+void CreateNewFile()
 {
-		FILE *file;
-		char name[20];
-		printf("Enter the file name:\n");
+	FILE *file;
+	char name[20];
+	printf("Enter the file name:\n");
 
-		fflush(stdin);
-		gets_s(name);
-		file = fopen(name, "wb");
+	fflush(stdin);
+	gets_s(name);
+	file = fopen(name, "wb");
 
-		if (file == NULL) {
-			printf("The file was not successfully created!\n");
-		}
-		else
-			printf("'%s' successfully created!\n", name);
+	if (file == NULL) {
+		printf("The file was not successfully created!\n");
+	}
+	else
+		printf("'%s' successfully created!\n", name);
 
-		fclose(file);
+	fclose(file);
 }
 
 //task 2
-void ChooseActiveFile() 
+void ChooseActiveFile()
 {
 	if (activeFile != NULL)
 	{
@@ -63,14 +63,14 @@ void ChooseActiveFile()
 	gets_s(activeFileName);
 
 	activeFile = fopen(activeFileName, "rb+");
-	if (activeFile == NULL) 
+	if (activeFile == NULL)
 	{
 		printf("%s File does not exist!", activeFileName);
 	}
 }
 
 //task 3
-void ShowActiveFile() 
+void ShowActiveFile()
 {
 	if (activeFile != NULL)
 	{
@@ -94,12 +94,12 @@ void SerialFileForming()
 	/*else
 		printf("Serial file successfully created!\n");
 	*/
-	
-	while (c[0] != 'n') 
+
+	while (c[0] != 'n')
 	{
 		w = EnterWeapon();
 		fwrite(&w, sizeof(Weapon), 1, serialFile);
-		
+
 		printf("Do you want to continue?(y/n)\n");
 		gets_s(c);
 	}
@@ -114,18 +114,18 @@ void SerialFileForming()
 }
 
 //task 5
-void SequentialFileForming() 
+void SequentialFileForming()
 {
 	FILE *sequentialFile = NULL;
 	FILE *serialFile = NULL;
 	serialFile = fopen("serialFile.bin", "rb");
 	sequentialFile = fopen("sequentialFile.bin", "wb+");
 
-	if (serialFile == NULL || sequentialFile == NULL) 
+	if (serialFile == NULL || sequentialFile == NULL)
 	{
 		printf("Error with opening file!");
 	}
-	
+
 	//citam iz serijske u stablo dokle god fread vraca broj podataka koji je razlicit od nula
 	node *root = NULL;
 	Weapon w;
@@ -146,31 +146,89 @@ void SequentialFileForming()
 
 //task 6
 
-void IndexSequentialFileForming() 
+void IndexSequentialFileForming()
 {
-	fseek(activeFile, sizeof(int),  SEEK_SET);	//ostavljam prazno mesto za zaglavlje
+	fseek(activeFile, sizeof(int), SEEK_SET);	//ostavljam prazno mesto za zaglavlje
 	FILE *sequentialFile = fopen("sequentialFile.bin", "rb");
 	Weapon w;
 	Weapon weapons[FB];
-	int i=0;
-	while (fread(&w, sizeof(Weapon), 1, sequentialFile)) 
+	int blockCounter = 0;
+	int elementCounter = 0;
+	while (fread(&w, sizeof(Weapon), 1, sequentialFile))
 	{
 		fwrite(&w, sizeof(Weapon), 1, activeFile);
-		i++;
-		if (i % (FB-1) == 0) 
+		elementCounter++;
+		if (elementCounter % (FB - 1) == 0)
 		{
-			printf("%d\n", i);
+			printf("%d\n", elementCounter);
 			memset(&w, 0, sizeof(Weapon));
 			fwrite(&w, sizeof(Weapon), 1, activeFile);
+			elementCounter++;
+			blockCounter++;
 		}
-		
 	}
+
+	int j = (elementCounter % FB);
+	if (j > 0) { //ako je nacet blok, da dopuni sa praznim slogovima
+		while (j < FB) {
+			memset(&w, 0, sizeof(Weapon));
+			fwrite(&w, sizeof(Weapon), 1, activeFile);
+			elementCounter++;
+			j++;
+		}
+	}
+	FILE *indexZone = activeFile;
+	FILE *startFile = activeFile;
+	fseek(startFile, 0, SEEK_SET);
+
+	int sizeOfPrimaryZone = blockCounter * FB * sizeof(Weapon);
+	fseek(activeFile, 0, SEEK_SET);
+	fwrite(&sizeOfPrimaryZone, sizeof(int), 1, activeFile);
+
+	fseek(activeFile, sizeof(int), SEEK_SET);
+	
+	int i;
+	IndTreeNode node, tempNode;	//sta ako na pocetku nemam paran broj blokova?
+
+	//formiramo poslenji nivo stabla, elementi koji pokazuju na same blokove, i smestamo ih na pocetku indeks zone
+	for (i = 0; i < blockCounter; i += 2) { 
+		//preuzmemo adresu, jer kada ga ucitamo, pokazivac se pomera
+		node.addrId1 = activeFile - startFile;
+		fread(&w, sizeof(Weapon), 1, activeFile);
+		node.id1 = w.id; //preuzmemo id 0 elementa bloka jer je on najmanji
+
+		//preskocimo 4 elementa, tj. idemo na pocetak sledeceg bloka
+		fseek(activeFile, node.addrId1 + 4 * sizeof(Weapon), SEEK_SET);
+		node.addrId2 = activeFile - startFile;
+		fread(&w, sizeof(Weapon), 1, activeFile);
+		node.id2 = w.id;
+		//upisemo cvor stabla u indeks zonu
+		fwrite(&node, sizeof(IndTreeNode), 1, indexZone);
+	}
+	//formiramo ostatak stabla na osnovu formiranog poslednjeg nivoa
+	for (i = 0; i < ceil(log2(blockCounter)); i++) {
+		for (j = 0; j < blockCounter; j +=2 ) {
+			node.addrId1= activeFile - startFile; 
+			fread(&tempNode, sizeof(IndTreeNode), 1, activeFile);
+			node.id1 = tempNode.id1 < tempNode.id2 ? tempNode.id1 : tempNode.id2;
+
+			node.addrId2 = activeFile - startFile;
+			fread(&tempNode, sizeof(IndTreeNode), 1, activeFile);
+			node.id2 = tempNode.id1 < tempNode.id2 ? tempNode.id1 : tempNode.id2;
+			
+			fwrite(&node, sizeof(IndTreeNode), 1, indexZone);
+		}
+		blockCounter = (blockCounter / 2) + (blockCounter % 2);
+	}
+
+
+
 
 
 }
 int main()
 {
-	
+
 	char choice[10];
 
 	do
@@ -179,8 +237,8 @@ int main()
 		printf("1. Create an empty file\n");
 		printf("2. Choose the active file\n");
 		printf("3. Show the file name\n");
-		printf("4. formiranje serijske datoteke direktnim unosom podataka u realnom vremenu\n");
-		printf("5. formiranje sekvencijalne datoteke tako što æe se uèitati slogovi iz serijske datoteke u\n");
+		printf("4. Create the serial file\n");
+		printf("5. Create the sequential file\n");
 		printf("6. formiranje aktivne datoteke tako što æe se popunjavati primarna zona datoteke sa\n");
 		printf("7. upis novog sloga u aktivnu datoteku direktnim unosom podataka u realnom vremenu\n");
 		printf("8. traženje proizvoljnog sloga u aktivnoj datoteci i njegov prikaz zajedno sa adresom bloka i\n");
@@ -192,31 +250,31 @@ int main()
 
 		switch (atoi(choice))
 		{
-			case 1: CreateNewFile();
-				break;
-			case 2: ChooseActiveFile();
-				break;
-			case 3: ShowActiveFile();
-				break;
-			case 4: SerialFileForming();
-				break;
-			case 5: SequentialFileForming();
-				break;
-			case 6: IndexSequentialFileForming();	//doadati uslov da li je datoteka otvorena
-				break;
-			case 7: /*Call function here to do the required operation*/
-				break;
-			case 8: /*Call function here to do the required operation*/
-				break;
-			case 9: /*Call function here to do the required operation*/
-				break;
-			case 10: /*Call function here to do the required operation*/
-				break;
-			case 11: 
-					printf("Goodbye\n\n");
-					return 0;					
-			default: printf("Wrong Choice. Enter again\n");
-				break;
+		case 1: CreateNewFile();
+			break;
+		case 2: ChooseActiveFile();
+			break;
+		case 3: ShowActiveFile();
+			break;
+		case 4: SerialFileForming();
+			break;
+		case 5: SequentialFileForming();
+			break;
+		case 6: IndexSequentialFileForming();	//doadati uslov da li je datoteka otvorena
+			break;
+		case 7: /*Call function here to do the required operation*/
+			break;
+		case 8: /*Call function here to do the required operation*/
+			break;
+		case 9: /*Call function here to do the required operation*/
+			break;
+		case 10: /*Call function here to do the required operation*/
+			break;
+		case 11:
+			printf("Goodbye\n\n");
+			return 0;
+		default: printf("Wrong Choice. Enter again\n");
+			break;
 		}
 
 	} while (1);
