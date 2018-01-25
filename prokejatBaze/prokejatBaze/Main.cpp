@@ -145,9 +145,19 @@ void SequentialFileForming()
 }
 
 //task 6
+int CalculateCountOfNodes(int blockCounter, int height) {
+	int count = 0;
+	for (int i = 0; i < height; i++) {
+		blockCounter = (blockCounter / 2) + (blockCounter % 2);
+		count += blockCounter;
+	}
+
+	return count;
+}
 
 void IndexSequentialFileForming()
 {
+	int adresa = sizeof(int);
 	fseek(activeFile, sizeof(int), SEEK_SET);	//ostavljam prazno mesto za zaglavlje
 	FILE *sequentialFile = fopen("sequentialFile.bin", "rb");
 	Weapon w;
@@ -157,15 +167,24 @@ void IndexSequentialFileForming()
 	while (fread(&w, sizeof(Weapon), 1, sequentialFile))
 	{
 		fwrite(&w, sizeof(Weapon), 1, activeFile);
+		adresa += sizeof(Weapon);
 		elementCounter++;
-		if (elementCounter % (FB - 1) == 0)
+		
+		if ((elementCounter+1) % FB == 0)
 		{
-			printf("%d\n", elementCounter);
 			memset(&w, 0, sizeof(Weapon));
 			fwrite(&w, sizeof(Weapon), 1, activeFile);
+			adresa += sizeof(Weapon);
 			elementCounter++;
+
 			blockCounter++;
 		}
+	}
+
+	fseek(activeFile, sizeof(int), SEEK_SET);
+	while (fread(&w, sizeof(Weapon), 1, activeFile))
+	{
+		printf("SequZone: %d %s %.2lf\n", w.id, w.maker, w.price);
 	}
 
 	int j = (elementCounter % FB);
@@ -173,59 +192,104 @@ void IndexSequentialFileForming()
 		while (j < FB) {
 			memset(&w, 0, sizeof(Weapon));
 			fwrite(&w, sizeof(Weapon), 1, activeFile);
+			adresa += sizeof(Weapon);
 			elementCounter++;
 			j++;
 		}
 	}
-	FILE *indexZone = activeFile;
-	FILE *startFile = activeFile;
-	fseek(startFile, 0, SEEK_SET);
 
+	int height = ceil(log2(blockCounter));
+	int nodeCount = CalculateCountOfNodes(blockCounter, height);
+	IndTreeNode *tempIndexZone = (IndTreeNode *)malloc(nodeCount * sizeof(IndTreeNode));
+	int indexZoneAddress = adresa;
+	int tempIndexZoneAddr = 0;
+	
+
+	int i;
 	int sizeOfPrimaryZone = blockCounter * FB * sizeof(Weapon);
 	fseek(activeFile, 0, SEEK_SET);
+	adresa = 0;
 	fwrite(&sizeOfPrimaryZone, sizeof(int), 1, activeFile);
+	adresa += sizeof(int);
 
-	fseek(activeFile, sizeof(int), SEEK_SET);
 	
-	int i;
-	IndTreeNode node, tempNode;	//sta ako na pocetku nemam paran broj blokova?
-
-	//formiramo poslenji nivo stabla, elementi koji pokazuju na same blokove, i smestamo ih na pocetku indeks zone
+	fseek(activeFile, sizeof(int), SEEK_SET);
+	IndTreeNode node;	//sta ako na pocetku nemam paran broj blokova?
+	int nodeCounter = 0;
+	//formiramo poslednji nivo stabla, elementi koji pokazuju na same blokove, i smestamo ih na pocetku indeks zone
 	for (i = 0; i < blockCounter; i += 2) { 
 		//preuzmemo adresu, jer kada ga ucitamo, pokazivac se pomera
-		node.addrId1 = activeFile - startFile;
-		fread(&w, sizeof(Weapon), 1, activeFile);
-		node.id1 = w.id; //preuzmemo id 0 elementa bloka jer je on najmanji
-
-		//preskocimo 4 elementa, tj. idemo na pocetak sledeceg bloka
-		fseek(activeFile, node.addrId1 + 4 * sizeof(Weapon), SEEK_SET);
-		node.addrId2 = activeFile - startFile;
-		fread(&w, sizeof(Weapon), 1, activeFile);
-		node.id2 = w.id;
-		//upisemo cvor stabla u indeks zonu
-		fwrite(&node, sizeof(IndTreeNode), 1, indexZone);
-	}
-	//formiramo ostatak stabla na osnovu formiranog poslednjeg nivoa
-	for (i = 0; i < ceil(log2(blockCounter)); i++) {
-		for (j = 0; j < blockCounter; j +=2 ) {
-			node.addrId1= activeFile - startFile; 
-			fread(&tempNode, sizeof(IndTreeNode), 1, activeFile);
-			node.id1 = tempNode.id1 < tempNode.id2 ? tempNode.id1 : tempNode.id2;
-
-			node.addrId2 = activeFile - startFile;
-			fread(&tempNode, sizeof(IndTreeNode), 1, activeFile);
-			node.id2 = tempNode.id1 < tempNode.id2 ? tempNode.id1 : tempNode.id2;
-			
-			fwrite(&node, sizeof(IndTreeNode), 1, indexZone);
+		node.addrId1 = adresa;
+		if (fread(&w, sizeof(Weapon), 1, activeFile) == 0) {
+			break;
 		}
-		blockCounter = (blockCounter / 2) + (blockCounter % 2);
+		adresa += sizeof(Weapon);
+		node.id1 = w.id; //preuzmemo id 0 elementa bloka jer je on najmanji
+		//preskocimo 4 elementa, tj. idemo na pocetak sledeceg bloka
+		
+		adresa += 4 * sizeof(Weapon);
+		fseek(activeFile, adresa, SEEK_SET);
+		
+		
+		node.addrId2 = adresa;
+		if (fread(&w, sizeof(Weapon), 1, activeFile) == 0) {
+			memset(&w, 0, sizeof(Weapon));
+			node.addrId2 = 0;
+		}
+		adresa += sizeof(Weapon);
+		node.id2 = w.id;
+
+		//upisemo cvor stabla u indeks zonu
+		memcpy(tempIndexZone + nodeCounter, &node, sizeof(IndTreeNode));
+		indexZoneAddress += sizeof(IndTreeNode);
+		nodeCounter++;
+
+		adresa += 4 * sizeof(Weapon);
+		fseek(activeFile, adresa, SEEK_SET);
 	}
 
+	for (int i = 0; i < nodeCounter; i++) {
+		printf("%d %d | %d %d\n", tempIndexZone[i].id1, tempIndexZone[i].addrId1, tempIndexZone[i].id2, tempIndexZone[i].addrId2);
+	}
+	printf("========\n");
 
+	IndTreeNode * pointer = tempIndexZone;
+	IndTreeNode tempNode;
+	adresa = indexZoneAddress;
+	int levelNodeCount = nodeCounter;
+	//formiramo ostatak stabla na osnovu formiranog poslednjeg nivoa
+	for (i = 0; i < height-1; i++) {
+		for (j = 0; j < levelNodeCount; j+=2 ) {
+			node.addrId1= adresa;
+			adresa += sizeof(IndTreeNode);
+			node.id1 = pointer->id1;
+			pointer++;
+			printf("%d %d\n", node.addrId1, node.id1);
+			
+			
+			if (levelNodeCount % 2 != 0 && j == levelNodeCount - 1) {
+				node.id2 = 0;
+				node.addrId2 = 0;
+			}
+			else {
+				node.addrId2 = adresa;
+				node.id2 = pointer->id1;
+				adresa += sizeof(IndTreeNode);
+				pointer++;	
+			}
+			tempIndexZone[nodeCounter++] = node;
+			indexZoneAddress += sizeof(IndTreeNode);
+			printf("%d %d\n", node.addrId2, node.id2);
+		}
+		levelNodeCount = (levelNodeCount / 2) + (levelNodeCount % 2);
+		printf("****************\n");
+	}
 
-
+	free(tempIndexZone);
 
 }
+
+
 int main()
 {
 
