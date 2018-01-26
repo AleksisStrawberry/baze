@@ -55,6 +55,10 @@ node* insert_node(node *root, Weapon w)
 				is_left = 0;
 				cursor = cursor->right;
 			}
+			else {
+				printf("ID already exists.\n");
+				return root;
+			}
 		}
 		if (is_left)
 			prev->left = create_node(w);

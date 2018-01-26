@@ -10,22 +10,35 @@ char activeFileName[20];
 
 int get_int()
 {
-	char tempString[15];
+	char tempString[50];
 	gets_s(tempString);
 	return atoi(tempString);
 }
 Weapon EnterWeapon()
 {
 	Weapon w;
-	printf("Enter the identification number:\n");
-	w.id = get_int();
-	printf("Enter the maker:\n");
-	gets_s(w.maker);
-	printf("Enter the mark:\n");
-	gets_s(w.mark);
-	printf("Enter the price:\n");
-	w.price = get_int();
+	char tempString[50];
+	do {
+		do {
+			printf("Enter the identification number:\n");
+			gets_s(tempString);
+		} while (strlen(tempString) != 10);
+		w.id = atoi(tempString);
+	} while (w.id < 1000000000 || w.id > 9999999999);
 
+	do {
+		printf("Enter the maker:\n");
+		gets_s(w.maker);
+	} while (strlen(w.maker)>50 || strlen(w.maker) < 1);
+	do {
+		printf("Enter the mark:\n");
+		gets_s(w.mark);
+	} while (strlen(w.mark)>50 || strlen(w.mark) < 1);
+	do {
+		printf("Enter the price:\n");
+		w.price = get_int();
+	} while (w.price > 100000000 || w.price < 1);
+	
 	GetSystemTime(&w.date);
 
 	return w;
@@ -104,12 +117,7 @@ void SerialFileForming()
 		gets_s(c);
 	}
 
-	/*fseek(serialFile, 0, SEEK_SET);
-	fread(&w, sizeof(Weapon), 1, serialFile);
-	printf("ID is %d\nMaker is %s\nMark is %s\nPrice is %lf\nDate is: %u %u %u %u %u %u\n", w.id, w.maker, w.mark, w.price, w.date.wDay, w.date.wMonth, w.date.wYear, w.date.wHour, w.date.wMinute, w.date.wSecond);
-	fread(&w, sizeof(Weapon), 1, serialFile);
-	printf("ID is %d\nMaker is %s\nMark is %s\nPrice is %lf\nDate is: %u %u %u %u %u %u\n", w.id, w.maker, w.mark, w.price, w.date.wDay, w.date.wMonth, w.date.wYear, w.date.wHour, w.date.wMinute, w.date.wSecond);
-	*/
+
 	fclose(serialFile);
 }
 
@@ -157,139 +165,353 @@ int CalculateCountOfNodes(int blockCounter, int height) {
 
 void IndexSequentialFileForming()
 {
-	int adresa = sizeof(int);
-	fseek(activeFile, sizeof(int), SEEK_SET);	//ostavljam prazno mesto za zaglavlje
+	if (activeFile == NULL)
+	{
+		printf("First chouse active file in meni(2).\n");
+		return;
+	}
+
+	int adresa = sizeof(Header);
+	fseek(activeFile, sizeof(Header), SEEK_SET);	//ostavljam prazno mesto za zaglavlje
 	FILE *sequentialFile = fopen("sequentialFile.bin", "rb");
 	Weapon w;
 	Weapon weapons[FB];
+	int weaponsInd = 0;
 	int blockCounter = 0;
 	int elementCounter = 0;
-	while (fread(&w, sizeof(Weapon), 1, sequentialFile))
+	while (fread(&weapons[weaponsInd++], sizeof(Weapon), 1, sequentialFile))
 	{
-		fwrite(&w, sizeof(Weapon), 1, activeFile);
-		adresa += sizeof(Weapon);
 		elementCounter++;
-		
-		if ((elementCounter+1) % FB == 0)
+
+		if ((elementCounter + 1) % FB == 0)
 		{
-			memset(&w, 0, sizeof(Weapon));
-			fwrite(&w, sizeof(Weapon), 1, activeFile);
-			adresa += sizeof(Weapon);
+			memset(&weapons[weaponsInd++], 0, sizeof(Weapon));
+			fwrite(weapons, sizeof(Weapon), FB, activeFile);
+			adresa += FB * sizeof(Weapon);
 			elementCounter++;
-
 			blockCounter++;
+			weaponsInd = 0;
 		}
 	}
 
-	fseek(activeFile, sizeof(int), SEEK_SET);
-	while (fread(&w, sizeof(Weapon), 1, activeFile))
-	{
-		printf("SequZone: %d %s %.2lf\n", w.id, w.maker, w.price);
-	}
-
-	int j = (elementCounter % FB);
-	if (j > 0) { //ako je nacet blok, da dopuni sa praznim slogovima
-		while (j < FB) {
-			memset(&w, 0, sizeof(Weapon));
-			fwrite(&w, sizeof(Weapon), 1, activeFile);
-			adresa += sizeof(Weapon);
+	//ako je nacet blok, da dopuni sa praznim slogovima
+	weaponsInd = (elementCounter % FB);
+	if (weaponsInd > 0) {
+		while (weaponsInd < FB) {
+			memset(&weapons[weaponsInd++], 0, sizeof(Weapon));
 			elementCounter++;
-			j++;
 		}
+
+		fwrite(weapons, sizeof(Weapon), FB, activeFile);
+		adresa += FB * sizeof(Weapon);
 	}
 
 	int height = ceil(log2(blockCounter));
 	int nodeCount = CalculateCountOfNodes(blockCounter, height);
+
 	IndTreeNode *tempIndexZone = (IndTreeNode *)malloc(nodeCount * sizeof(IndTreeNode));
 	int indexZoneAddress = adresa;
-	int tempIndexZoneAddr = 0;
-	
 
-	int i;
-	int sizeOfPrimaryZone = blockCounter * FB * sizeof(Weapon);
-	fseek(activeFile, 0, SEEK_SET);
-	adresa = 0;
-	fwrite(&sizeOfPrimaryZone, sizeof(int), 1, activeFile);
-	adresa += sizeof(int);
+	Header header;
+	header.sizeOfPrimary = blockCounter * FB * sizeof(Weapon);
 
-	
-	fseek(activeFile, sizeof(int), SEEK_SET);
+
+	fseek(activeFile, sizeof(Header), SEEK_SET);
+	adresa = sizeof(Header);
 	IndTreeNode node;	//sta ako na pocetku nemam paran broj blokova?
-	int nodeCounter = 0;
+	int i, nodeCounter = 0;
 	//formiramo poslednji nivo stabla, elementi koji pokazuju na same blokove, i smestamo ih na pocetku indeks zone
-	for (i = 0; i < blockCounter; i += 2) { 
-		//preuzmemo adresu, jer kada ga ucitamo, pokazivac se pomera
-		node.addrId1 = adresa;
-		if (fread(&w, sizeof(Weapon), 1, activeFile) == 0) {
+	for (i = 0; i < blockCounter; i += 2) {
+		if (fread(weapons, sizeof(Weapon), 5, activeFile) == 0) {
 			break;
 		}
-		adresa += sizeof(Weapon);
-		node.id1 = w.id; //preuzmemo id 0 elementa bloka jer je on najmanji
-		//preskocimo 4 elementa, tj. idemo na pocetak sledeceg bloka
-		
-		adresa += 4 * sizeof(Weapon);
-		fseek(activeFile, adresa, SEEK_SET);
-		
-		
-		node.addrId2 = adresa;
-		if (fread(&w, sizeof(Weapon), 1, activeFile) == 0) {
-			memset(&w, 0, sizeof(Weapon));
+		node.addrId1 = adresa;
+		node.id1 = weapons[0].id; //preuzmemo id 0 elementa bloka jer je on najmanji
+
+		adresa += 5 * sizeof(Weapon);
+
+		if (fread(weapons, sizeof(Weapon), 5, activeFile) == 0) {
+			memset(&weapons[0], 0, sizeof(Weapon));
 			node.addrId2 = 0;
 		}
-		adresa += sizeof(Weapon);
-		node.id2 = w.id;
+		else {
+			node.addrId2 = adresa;
+			node.id2 = weapons[0].id;
+			adresa += 5 * sizeof(Weapon);
+		}
 
 		//upisemo cvor stabla u indeks zonu
-		memcpy(tempIndexZone + nodeCounter, &node, sizeof(IndTreeNode));
-		indexZoneAddress += sizeof(IndTreeNode);
+		memcpy(tempIndexZone + nodeCounter, &node, sizeof(IndTreeNode)); // tempIndexZone[nodeCounter] = node;
 		nodeCounter++;
-
-		adresa += 4 * sizeof(Weapon);
-		fseek(activeFile, adresa, SEEK_SET);
 	}
 
-	for (int i = 0; i < nodeCounter; i++) {
-		printf("%d %d | %d %d\n", tempIndexZone[i].id1, tempIndexZone[i].addrId1, tempIndexZone[i].id2, tempIndexZone[i].addrId2);
-	}
-	printf("========\n");
 
-	IndTreeNode * pointer = tempIndexZone;
-	IndTreeNode tempNode;
-	adresa = indexZoneAddress;
+	adresa = header.sizeOfPrimary + sizeof(Header);
 	int levelNodeCount = nodeCounter;
+	int j, current = 0;
 	//formiramo ostatak stabla na osnovu formiranog poslednjeg nivoa
-	for (i = 0; i < height-1; i++) {
-		for (j = 0; j < levelNodeCount; j+=2 ) {
-			node.addrId1= adresa;
+	for (i = 0; i < height - 1; i++) {
+		for (j = 0; j < levelNodeCount; j += 2) {
+			node.addrId1 = adresa;
+			node.id1 = tempIndexZone[current].id1;
+			current++;
 			adresa += sizeof(IndTreeNode);
-			node.id1 = pointer->id1;
-			pointer++;
-			printf("%d %d\n", node.addrId1, node.id1);
-			
-			
+
 			if (levelNodeCount % 2 != 0 && j == levelNodeCount - 1) {
 				node.id2 = 0;
 				node.addrId2 = 0;
 			}
 			else {
 				node.addrId2 = adresa;
-				node.id2 = pointer->id1;
+				node.id2 = tempIndexZone[current].id1;
+				current++;
 				adresa += sizeof(IndTreeNode);
-				pointer++;	
 			}
-			tempIndexZone[nodeCounter++] = node;
-			indexZoneAddress += sizeof(IndTreeNode);
-			printf("%d %d\n", node.addrId2, node.id2);
-		}
-		levelNodeCount = (levelNodeCount / 2) + (levelNodeCount % 2);
-		printf("****************\n");
-	}
 
+			memcpy(tempIndexZone + nodeCounter, &node, sizeof(IndTreeNode)); // tempIndexZone[nodeCounter] = node;
+			nodeCounter++;
+
+			//printf("%d %d | %d %d\n", node.id1, node.addrId1, node.id2, node.addrId2);
+		}
+
+		levelNodeCount = (levelNodeCount / 2) + (levelNodeCount % 2); // = ceil(levelNodeCout / 2.0)
+	}
+	header.root = header.sizeOfPrimary + sizeof(Header) + ((nodeCounter - 1) * sizeof(IndTreeNode));
+	fseek(activeFile, 0, SEEK_SET);
+	fwrite(&header, sizeof(Header), 1, activeFile);
+
+	fseek(activeFile, header.sizeOfPrimary + sizeof(Header), SEEK_SET);
+	fwrite(tempIndexZone, sizeof(IndTreeNode), nodeCounter, activeFile);
 	free(tempIndexZone);
 
+	/*fseek(activeFile, header.root, SEEK_SET);
+	fread(&node, sizeof(IndTreeNode), 1, activeFile);
+	fseek(activeFile, node.addrId1, SEEK_SET);
+	fread(&node, sizeof(IndTreeNode), 1, activeFile);
+	printf("\n\n%d %d | %d %d\n\n", node.id1, node.addrId1, node.id2, node.addrId2);*/
+}
+int FindWeapon(int id, int * pindex) {
+	Header header;
+	fseek(activeFile, 0, SEEK_SET);
+	fread(&header, sizeof(Header), 1, activeFile);
+	*pindex = 0;
+	if (header.root == 0)
+	{
+		return 0;
+	}
+	else
+	{
+		int is_left = 0;
+		int r = 0;
+		int cursorAddr = header.root;
+		int prevAddr = 0;
+		IndTreeNode cursor, prev;
+
+
+		while (cursorAddr >= header.sizeOfPrimary)
+		{
+			fseek(activeFile, cursorAddr, SEEK_SET);
+			fread(&cursor, sizeof(IndTreeNode), 1, activeFile);
+
+			prev = cursor;
+			if (id < cursor.id2 && id >= cursor.id1)
+			{
+				is_left = 1;
+				cursorAddr = cursor.addrId1;
+			}
+			else if (id >= cursor.id2)
+			{
+				is_left = 0;
+				cursorAddr = cursor.addrId2;
+			}
+			else {
+				return 0;
+			}
+		}
+		Weapon weapons[FB];
+		fseek(activeFile, cursorAddr, SEEK_SET);
+		fread(weapons, sizeof(Weapon), 5, activeFile);
+
+		for (int i = 0; i < FB; i++) {
+			if (weapons[i].id == 0) {
+				return 0;
+			}
+
+			if (weapons[i].id == id && weapons[i].deleted == 0) {
+				*pindex = i;
+				return cursorAddr + (i * sizeof(Weapon));
+			}
+		}
+
+		//trazi u listi prekoracioca!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+	}
+	return 0;
 }
 
+//task 7
+void AddWeapon() {
+	char c[2];
+	Weapon w;
 
+	while (c[0] != 'n')
+	{
+		w = EnterWeapon();
+
+		Header header;
+		fseek(activeFile, 0, SEEK_SET);
+		fread(&header, sizeof(Header), 1, activeFile);
+
+		if (header.root != 0)
+		{
+			int is_left = 0;
+			int r = 0;
+			int cursorAddr = header.root;
+			int prevAddr = 0;
+			IndTreeNode cursor, prev;
+
+
+			while (cursorAddr >= header.sizeOfPrimary)
+			{
+				fseek(activeFile, cursorAddr, SEEK_SET);
+				fread(&cursor, sizeof(IndTreeNode), 1, activeFile);
+
+				prev = cursor;
+				if (w.id < cursor.id2 && w.id >= cursor.id1)
+				{
+					is_left = 1;
+					cursorAddr = cursor.addrId1;
+				}
+				else if (w.id >= cursor.id2)
+				{
+					is_left = 0;
+					cursorAddr = cursor.addrId2;
+				}
+				else {
+					printf("Error? AddWeapon\n");
+				}
+			}
+			Weapon weapons[FB];
+			fseek(activeFile, cursorAddr, SEEK_SET);
+			fread(weapons, sizeof(Weapon), 5, activeFile);
+			int i;
+			for (i = 0; i < FB; i++) {
+				if (weapons[i].id == w.id && weapons[i].deleted == 0) {
+					printf("Id already exist.\n");
+					break;
+				}
+
+				if (weapons[i].id == 0) {
+					weapons[i] = w;
+					fseek(activeFile, cursorAddr, SEEK_SET);
+					fwrite(weapons, sizeof(Weapon), 5, activeFile);
+					break;
+				}
+			}
+			if (i == FB) {
+				printf("There is no space in block.\n");
+			}
+
+			printf("Do you want to continue?(y/n)\n");
+			gets_s(c);
+		}
+	}
+}
+//task 8
+void SearchAndPrintWeapon() {
+	char tempString[10];
+	int id;
+
+	printf("Enter weapon id: ");
+	gets_s(tempString);
+	id = atoi(tempString);
+
+	int index;
+	int address = FindWeapon(id, &index);
+	if (address == 0) {
+		printf("Weapon with id %d does not exists.\n", id);
+	}
+	else {
+		if (index == 5) {
+			printf("Prekoracilac:");
+		}
+		else {
+			printf("Block address: %d\n", address - (index * sizeof(Weapon)));
+			printf("Index in block: %d\n", index);
+		}
+
+		Weapon w;
+		fseek(activeFile, address, SEEK_SET);
+		fread(&w, sizeof(Weapon), 1, activeFile);
+		printf("ID:\t%d\n", w.id);
+		printf("Maker:\t%s\n", w.maker);
+		printf("Mark:\t%s\n", w.mark);
+		printf("Price:\t%.2lf\n", w.price);
+		printf("Date:\t%d.%d.%d %d:%d:%d\n", w.date.wDay, w.date.wMonth, w.date.wYear, w.date.wHour, w.date.wMinute, w.date.wSecond);
+
+	}
+}
+
+//task 9
+void DeleteWeapon()
+{
+	char tempString[10];
+	int id;
+
+	printf("Enter weapon id: ");
+	gets_s(tempString);
+	id = atoi(tempString);
+
+	int index;
+	int address = FindWeapon(id, &index);
+
+	if (address == 0) {
+		printf("Weapon with id %d does not exists.\n", id);
+	}
+	else {
+		if (index == 5) {
+			printf("Prekoracilac:");
+		}
+		else {
+			Weapon w;
+			fseek(activeFile, address, SEEK_SET);
+			fread(&w, sizeof(Weapon), 1, activeFile);
+			w.deleted = 1;
+			fseek(activeFile, address, SEEK_SET);
+			fwrite(&w, sizeof(Weapon), 1, activeFile);
+		}
+	}
+}
+//task 10
+void EditDateAndTime()
+{
+	char tempString[10];
+	int id;
+
+	printf("Enter weapon id: ");
+	gets_s(tempString);
+	id = atoi(tempString);
+
+	int index;
+	int address = FindWeapon(id, &index);
+
+	if (address == 0) {
+		printf("Weapon with id %d does not exists.\n", id);
+	}
+	else {
+		if (index == 5) {
+			printf("Prekoracilac:");
+		}
+		else {
+			Weapon w;
+			fseek(activeFile, address, SEEK_SET);
+			fread(&w, sizeof(Weapon), 1, activeFile);
+			GetSystemTime(&w.date);
+			fseek(activeFile, address, SEEK_SET);
+			fwrite(&w, sizeof(Weapon), 1, activeFile);
+		}
+	}
+}
 int main()
 {
 
@@ -303,10 +525,10 @@ int main()
 		printf("3. Show the file name\n");
 		printf("4. Create the serial file\n");
 		printf("5. Create the sequential file\n");
-		printf("6. formiranje aktivne datoteke tako što æe se popunjavati primarna zona datoteke sa\n");
-		printf("7. upis novog sloga u aktivnu datoteku direktnim unosom podataka u realnom vremenu\n");
-		printf("8. traženje proizvoljnog sloga u aktivnoj datoteci i njegov prikaz zajedno sa adresom bloka i\n");
-		printf("9. logièko brisanje aktuelnog sloga iz aktivne datoteke \n");
+		printf("6. Create active file from sequential\n");
+		printf("7. Add new weapon to the active file\n");
+		printf("8. Search weapon\n");
+		printf("9. Delete weapon from active file \n");
 		printf("10. promenu vrednosti obeležja datum i vreme uvrštenja u ponudu u zadatom slogu iz\n");
 		printf("11. Exit!\n");
 
@@ -324,15 +546,20 @@ int main()
 			break;
 		case 5: SequentialFileForming();
 			break;
-		case 6: IndexSequentialFileForming();	//doadati uslov da li je datoteka otvorena
+		case 6:
+			IndexSequentialFileForming();
 			break;
-		case 7: /*Call function here to do the required operation*/
+		case 7:
+			AddWeapon();
 			break;
-		case 8: /*Call function here to do the required operation*/
+		case 8:
+			SearchAndPrintWeapon();
 			break;
-		case 9: /*Call function here to do the required operation*/
+		case 9:
+			DeleteWeapon();
 			break;
-		case 10: /*Call function here to do the required operation*/
+		case 10:
+			EditDateAndTime();
 			break;
 		case 11:
 			printf("Goodbye\n\n");

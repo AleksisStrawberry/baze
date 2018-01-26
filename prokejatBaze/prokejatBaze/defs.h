@@ -15,6 +15,11 @@
 
 typedef SYSTEMTIME DateTime;
 
+typedef struct fileHeader {
+	int sizeOfPrimary;
+	int root;
+}Header;
+
 typedef struct indTreeNode {
 	int id1;
 	int id2;
@@ -30,6 +35,7 @@ typedef struct weapon
 	char mark[50];
 	double price;
 	DateTime date;
+	char deleted = 0;
 }Weapon;
 
 
