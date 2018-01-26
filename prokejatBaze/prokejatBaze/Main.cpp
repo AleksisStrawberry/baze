@@ -20,7 +20,7 @@ Weapon EnterWeapon()
 	char tempString[50];
 	do {
 		do {
-			printf("Enter the identification number:\n");
+			printf("Enter the identification number (10 digits):\n");
 			gets_s(tempString);
 		} while (strlen(tempString) != 10);
 		w.id = atoi(tempString);
