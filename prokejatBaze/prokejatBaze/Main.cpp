@@ -343,7 +343,7 @@ int FindWeapon(int id, int * pindex) {
 			}
 		}
 
-		//trazi u listi prekoracioca!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		//trazi u listi prekoracioca!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 	}
 	return 0;
