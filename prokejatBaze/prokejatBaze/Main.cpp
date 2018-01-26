@@ -343,7 +343,7 @@ int FindWeapon(int id, int * pindex) {
 			}
 		}
 
-		//trazi u listi prekoracioca!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		//trazi u listi prekoracioca!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 	}
 	return 0;
@@ -528,8 +528,8 @@ int main()
 		printf("6. Create active file from sequential\n");
 		printf("7. Add new weapon to the active file\n");
 		printf("8. Search weapon\n");
-		printf("9. Delete weapon from active file \n");
-		printf("10. promenu vrednosti obeležja datum i vreme uvrštenja u ponudu u zadatom slogu iz\n");
+		printf("9. Delete weapon from active file\n");
+		printf("10.Change the value of date and time\n");
 		printf("11. Exit!\n");
 
 		gets_s(choice);
