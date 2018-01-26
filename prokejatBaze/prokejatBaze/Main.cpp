@@ -401,7 +401,7 @@ void AddWeapon() {
 					break;
 				}
 
-				if (weapons[i].id == 0) {
+				if (weapons[i].id == 0 || weapons[i].deleted != 0) {
 					weapons[i] = w;
 					fseek(activeFile, cursorAddr, SEEK_SET);
 					fwrite(weapons, sizeof(Weapon), 5, activeFile);
